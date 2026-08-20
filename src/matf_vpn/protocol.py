@@ -1,0 +1,57 @@
+"""Binary packet format shared by the VPN client and server."""
+
+from dataclasses import dataclass
+from enum import IntEnum
+import struct
+
+
+PROTOCOL_VERSION = 1
+HEADER = struct.Struct("!BBIQH")
+MAX_PAYLOAD_SIZE = 65_535
+
+
+class MessageType(IntEnum):
+    DATA = 1
+    KEEPALIVE = 2
+
+
+@dataclass(frozen=True)
+class Packet:
+    message_type: MessageType
+    session_id: int
+    sequence_number: int
+    payload: bytes = b""
+
+    def encode(self) -> bytes:
+        if not 0 <= self.session_id <= 0xFFFFFFFF:
+            raise ValueError("session_id must fit in 32 bits")
+        if not 0 <= self.sequence_number <= 0xFFFFFFFFFFFFFFFF:
+            raise ValueError("sequence_number must fit in 64 bits")
+        if len(self.payload) > MAX_PAYLOAD_SIZE:
+            raise ValueError("payload is too large")
+
+        return HEADER.pack(
+            PROTOCOL_VERSION,
+            self.message_type,
+            self.session_id,
+            self.sequence_number,
+            len(self.payload),
+        ) + self.payload
+
+    @classmethod
+    def decode(cls, data: bytes) -> "Packet":
+        if len(data) < HEADER.size:
+            raise ValueError("packet is shorter than the header")
+
+        version, raw_type, session_id, sequence_number, payload_size = HEADER.unpack_from(data)
+        if version != PROTOCOL_VERSION:
+            raise ValueError(f"unsupported protocol version: {version}")
+        if len(data) != HEADER.size + payload_size:
+            raise ValueError("payload length does not match the header")
+
+        try:
+            message_type = MessageType(raw_type)
+        except ValueError as error:
+            raise ValueError(f"unsupported message type: {raw_type}") from error
+
+        return cls(message_type, session_id, sequence_number, data[HEADER.size:])
