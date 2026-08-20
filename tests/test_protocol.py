@@ -1,6 +1,6 @@
 import unittest
 
-from matf_vpn.protocol import MessageType, Packet
+from matf_vpn.protocol import MAX_PAYLOAD_SIZE, MessageType, Packet
 
 
 class PacketTest(unittest.TestCase):
@@ -21,6 +21,12 @@ class PacketTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "payload length"):
             Packet.decode(encoded[:-1])
+
+    def test_rejects_payload_larger_than_udp_datagram_limit(self) -> None:
+        packet = Packet(MessageType.DATA, 42, 10, bytes(MAX_PAYLOAD_SIZE + 1))
+
+        with self.assertRaisesRegex(ValueError, "payload is too large"):
+            packet.encode()
 
 
 if __name__ == "__main__":

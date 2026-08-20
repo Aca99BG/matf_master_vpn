@@ -7,12 +7,19 @@ import struct
 
 PROTOCOL_VERSION = 1
 HEADER = struct.Struct("!BBIQH")
-MAX_PAYLOAD_SIZE = 65_535
+MAX_UDP_DATAGRAM_SIZE = 65_507
+MAX_PAYLOAD_SIZE = MAX_UDP_DATAGRAM_SIZE - HEADER.size
+
+
+class InvalidPacketError(ValueError):
+    pass
 
 
 class MessageType(IntEnum):
     DATA = 1
     KEEPALIVE = 2
+    CLIENT_HELLO = 3
+    SERVER_HELLO = 4
 
 
 @dataclass(frozen=True)
@@ -41,17 +48,17 @@ class Packet:
     @classmethod
     def decode(cls, data: bytes) -> "Packet":
         if len(data) < HEADER.size:
-            raise ValueError("packet is shorter than the header")
+            raise InvalidPacketError("packet is shorter than the header")
 
         version, raw_type, session_id, sequence_number, payload_size = HEADER.unpack_from(data)
         if version != PROTOCOL_VERSION:
-            raise ValueError(f"unsupported protocol version: {version}")
+            raise InvalidPacketError(f"unsupported protocol version: {version}")
         if len(data) != HEADER.size + payload_size:
-            raise ValueError("payload length does not match the header")
+            raise InvalidPacketError("payload length does not match the header")
 
         try:
             message_type = MessageType(raw_type)
         except ValueError as error:
-            raise ValueError(f"unsupported message type: {raw_type}") from error
+            raise InvalidPacketError(f"unsupported message type: {raw_type}") from error
 
         return cls(message_type, session_id, sequence_number, data[HEADER.size:])

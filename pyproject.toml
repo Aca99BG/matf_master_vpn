@@ -20,5 +20,13 @@ gui = [
 	"PyQt5>=5.15",
 ]
 
+[project.scripts]
+matf-vpn = "matf_vpn.cli:main"
+matf-vpn-keygen = "matf_vpn.keygen:main"
+matf-vpn-gui = "matf_vpn.gui:main"
+matf-vpn-server = "matf_vpn.multi_server_cli:main"
+matf-vpn-benchmark = "matf_vpn.benchmark_cli:main"
+matf-vpn-report = "matf_vpn.benchmark_report:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]

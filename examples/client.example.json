@@ -1,0 +1,17 @@
+{
+  "tun_name": "mvpn0",
+  "tun_address": "10.8.0.2/24",
+  "mtu": 1400,
+  "bind": "0.0.0.0:51820",
+  "peer": "203.0.113.10:51820",
+  "private_key_file": "client.key",
+  "peer_public_key_file": "server.pub",
+  "role": "client",
+  "ephemeral_handshake": true,
+  "handshake_timeout": 3.0,
+  "packets_per_key": 100000,
+  "keepalive_interval": 10.0,
+  "liveness_timeout": 30.0,
+  "reconnect_delay": 1.0,
+  "json_logs": true
+}
