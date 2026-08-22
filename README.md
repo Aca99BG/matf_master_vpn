@@ -7,6 +7,19 @@ a TUN interface, UDP transport, authenticated encryption, and a PyQt client.
 This is an educational prototype, not a production VPN and not an audited
 security product.
 
+## Documentation
+
+Start with the [central project guide](docs/project-guide.md) for the complete
+architecture, setup, local and Azure operation, testing, benchmarking,
+troubleshooting, current status, and remaining thesis work.
+
+Specialized documents:
+
+- [Azure deployment](docs/azure-deployment.md)
+- [Benchmark methodology](docs/benchmarking.md)
+- [Security analysis](docs/security-analysis.md)
+- [Preliminary results](docs/preliminary-results.md)
+
 ## Scope
 
 The project includes:
@@ -123,8 +136,8 @@ network.
 The static X25519 mode authenticates possession of configured peer keys but
 does not provide forward secrecy. The optional authenticated ephemeral
 handshake combines fresh ephemeral and configured static X25519 exchanges,
-providing a fresh session secret and forward secrecy. Periodic in-session key
-rotation remains a separate milestone.
+providing a fresh session secret and forward secrecy. Packet-count key rotation
+derives bounded traffic-key epochs from that session secret.
 
 Validated on 2026-08-20 with 3/3 ICMP packets received and 0% packet loss:
 
