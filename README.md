@@ -99,6 +99,10 @@ The implemented threat model, controls, and residual risks are documented in
 smoke dataset and the requirements for defensible final experiments are in
 [docs/preliminary-results.md](docs/preliminary-results.md).
 
+A complete real-world Azure server, GUI client, key exchange, private-tunnel,
+full-tunnel NAT, and remote benchmark procedure is in
+[docs/azure-deployment.md](docs/azure-deployment.md).
+
 The script creates two temporary network namespaces, exchanges ICMP traffic
 through the Python TUN/UDP data plane, and removes all test resources on exit.
 
