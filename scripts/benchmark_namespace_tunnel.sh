@@ -15,6 +15,8 @@ SERVER_PID=""
 IPERF_PID=""
 WORK_DIR=$(mktemp -d)
 CURRENT_PHASE="setup"
+RESULT_UID=${SUDO_UID:-$(id -u)}
+RESULT_GID=${SUDO_GID:-$(id -g)}
 
 cleanup() {
 	set +e
@@ -38,6 +40,7 @@ on_error() {
 			cp "$log_file" "$OUTPUT_DIR/failed-$(basename "$log_file")" 2>/dev/null || true
 		fi
 	done
+	chown -R "$RESULT_UID:$RESULT_GID" "$OUTPUT_DIR" 2>/dev/null || true
 	printf 'Benchmark failed during phase: %s (exit %d)\n' "$CURRENT_PHASE" "$exit_code" >&2
 	printf 'Diagnostic logs: %s/failed-*.log\n' "$OUTPUT_DIR" >&2
 	exit "$exit_code"
@@ -154,4 +157,5 @@ env PYTHONPATH="$ROOT_DIR/src" python3 -m matf_vpn.benchmark_report \
 	--result "$OUTPUT_DIR/plaintext-python.json" \
 	--result "$OUTPUT_DIR/encrypted-python.json" \
 	--output "$OUTPUT_DIR/comparison.csv"
+chown -R "$RESULT_UID:$RESULT_GID" "$OUTPUT_DIR"
 printf 'Benchmark results: %s\n' "$OUTPUT_DIR"
