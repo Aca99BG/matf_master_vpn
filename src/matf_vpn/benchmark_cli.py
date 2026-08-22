@@ -8,6 +8,7 @@ from pathlib import Path
 import platform
 import shutil
 import subprocess
+import time
 from typing import Dict, List, Optional
 
 from matf_vpn.benchmark import parse_iperf3_json, parse_ping_times, summarize
@@ -31,6 +32,8 @@ def main(arguments: Optional[List[str]] = None) -> int:
     parser.add_argument("--iperf-port", type=int, default=5201)
     parser.add_argument("--iperf-duration", type=int, default=10)
     parser.add_argument("--udp-bitrate", default="100M")
+    parser.add_argument("--max-attempts", type=int, default=3)
+    parser.add_argument("--inter-run-delay", type=float, default=1.0)
     parser.add_argument("--skip-iperf", action="store_true")
     options = parser.parse_args(arguments)
     _validate_options(options)
@@ -51,6 +54,8 @@ def main(arguments: Optional[List[str]] = None) -> int:
             "iperf_port": options.iperf_port,
             "iperf_duration": options.iperf_duration,
             "udp_bitrate": options.udp_bitrate,
+            "max_attempts": options.max_attempts,
+            "inter_run_delay": options.inter_run_delay,
             "skip_iperf": options.skip_iperf,
         },
         "environment": {
@@ -103,6 +108,7 @@ def _run_iperf(
     protocol: str,
 ) -> Dict[str, object]:
     runs = []
+    failed_attempts = []
     throughput_samples = []
     for repetition in range(options.repetitions):
         command = prefix + [
@@ -117,11 +123,33 @@ def _run_iperf(
         ]
         if protocol == "udp":
             command.extend(["--udp", "--bitrate", options.udp_bitrate])
-        metrics = parse_iperf3_json(_run(command), protocol)
+        metrics = None
+        for attempt in range(1, options.max_attempts + 1):
+            try:
+                metrics = parse_iperf3_json(_run(command), protocol)
+                break
+            except (BenchmarkCommandError, ValueError) as error:
+                failed_attempts.append(
+                    {
+                        "repetition": repetition + 1,
+                        "attempt": attempt,
+                        "error": str(error),
+                    }
+                )
+                if attempt == options.max_attempts:
+                    raise BenchmarkCommandError(
+                        f"{protocol} repetition {repetition + 1} failed after "
+                        f"{options.max_attempts} attempts"
+                    ) from error
+                time.sleep(options.inter_run_delay)
+        assert metrics is not None
         runs.append({"repetition": repetition + 1, **metrics})
         throughput_samples.append(metrics["bits_per_second"])
+        if repetition + 1 < options.repetitions:
+            time.sleep(options.inter_run_delay)
     return {
         "raw_runs": runs,
+        "failed_attempts": failed_attempts,
         "throughput_summary_bps": summarize(throughput_samples).to_dict(),
     }
 
@@ -148,6 +176,8 @@ def _validate_options(options: argparse.Namespace) -> None:
         raise SystemExit("repetitions and ping count must be positive")
     if options.iperf_duration <= 0:
         raise SystemExit("iperf duration must be positive")
+    if options.max_attempts <= 0 or options.inter_run_delay < 0:
+        raise SystemExit("max attempts must be positive and inter-run delay non-negative")
     if not 1 <= options.iperf_port <= 65_535:
         raise SystemExit("iperf port must be between 1 and 65535")
 

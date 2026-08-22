@@ -93,6 +93,55 @@ class BenchmarkRunnerTest(unittest.TestCase):
         ):
             _run(["ping", "127.0.0.1"])
 
+    @patch("matf_vpn.benchmark_cli.time.sleep")
+    @patch("matf_vpn.benchmark_cli._run")
+    @patch("matf_vpn.benchmark_cli.shutil.which", return_value="/usr/bin/iperf3")
+    def test_retries_and_records_transient_iperf_failure(
+        self,
+        which_mock,
+        run_mock,
+        sleep_mock,
+    ) -> None:
+        run_mock.side_effect = [
+            PING_OUTPUT,
+            BenchmarkCommandError("control connection reset"),
+            json.dumps({"end": {"sum_received": {"bits_per_second": 10.0}}}),
+            json.dumps(
+                {
+                    "end": {
+                        "sum": {
+                            "bits_per_second": 9.0,
+                            "jitter_ms": 0.1,
+                            "lost_percent": 0.0,
+                        }
+                    }
+                }
+            ),
+        ]
+        with TemporaryDirectory() as directory:
+            output = Path(directory) / "retried.json"
+
+            main(
+                [
+                    "--label",
+                    "azure",
+                    "--target",
+                    "10.8.0.1",
+                    "--output",
+                    str(output),
+                    "--repetitions",
+                    "1",
+                    "--ping-count",
+                    "2",
+                    "--inter-run-delay",
+                    "0",
+                ]
+            )
+
+            document = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(len(document["tcp"]["failed_attempts"]), 1)
+            self.assertIn("control connection reset", document["tcp"]["failed_attempts"][0]["error"])
+
 
 if __name__ == "__main__":
     unittest.main()
