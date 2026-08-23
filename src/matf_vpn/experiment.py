@@ -119,6 +119,13 @@ def merge_benchmark_blocks(
         "latency": {
             "unit": "ms",
             "raw_runs": latency_runs,
+            "expected_samples": len(latency_runs) * int(reference_parameters["ping_count"]),
+            "received_samples": len(latency_samples),
+            "lost_percent": (
+                (len(latency_runs) * int(reference_parameters["ping_count"]) - len(latency_samples))
+                / (len(latency_runs) * int(reference_parameters["ping_count"]))
+                * 100
+            ),
             "summary": summarize(latency_samples).to_dict(),
         },
     }

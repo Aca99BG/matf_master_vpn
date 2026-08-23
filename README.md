@@ -18,6 +18,7 @@ Specialized documents:
 - [Azure deployment](docs/azure-deployment.md)
 - [Benchmark methodology](docs/benchmarking.md)
 - [Final evaluation protocol](docs/final-evaluation.md)
+- [Final evaluation results](docs/final-evaluation-results.md)
 - [Final report template](docs/final-report-template.md)
 - [Mentor email draft](docs/mentor-email-draft.md)
 - [Security analysis](docs/security-analysis.md)
@@ -55,7 +56,7 @@ milestones.
 10. [x] Add multiple-client server support.
 11. [x] Build the PyQt client on top of the tested VPN engine.
 12. [x] Automate local and Azure-ready performance experiments.
-13. [ ] Analyze security, results, limitations, and comparison baselines.
+13. [x] Analyze security, results, limitations, and comparison baselines.
 
 ## Development
 

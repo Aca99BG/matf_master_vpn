@@ -11,7 +11,10 @@ def result(label: str, latency: float, tcp_bps: float):
     return {
         "schema_version": 1,
         "label": label,
-        "latency": {"summary": {"median": latency, "p95": latency * 1.2}},
+        "latency": {
+            "lost_percent": 0.5,
+            "summary": {"median": latency, "p95": latency * 1.2},
+        },
         "tcp": {"raw_runs": [{"bits_per_second": tcp_bps}]},
         "udp": {
             "raw_runs": [
@@ -50,8 +53,10 @@ class BenchmarkReportTest(unittest.TestCase):
                 rows = list(csv.DictReader(report_file))
             self.assertEqual(rows[1]["label"], "vpn")
             self.assertEqual(float(rows[1]["latency_overhead_percent"]), 50.0)
+            self.assertEqual(float(rows[1]["latency_loss_percent"]), 0.5)
             self.assertEqual(float(rows[1]["tcp_mean_mbps"]), 80.0)
             self.assertEqual(float(rows[1]["tcp_change_percent"]), -20.0)
+            self.assertEqual(float(rows[1]["udp_effective_mean_mbps"]), 39.8)
 
     def test_includes_resource_metrics(self) -> None:
         with TemporaryDirectory() as directory:

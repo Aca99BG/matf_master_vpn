@@ -12,10 +12,12 @@ REPORT_FIELDS = [
     "label",
     "latency_median_ms",
     "latency_p95_ms",
+    "latency_loss_percent",
     "latency_overhead_percent",
     "tcp_mean_mbps",
     "tcp_change_percent",
     "udp_mean_mbps",
+    "udp_effective_mean_mbps",
     "udp_change_percent",
     "udp_mean_jitter_ms",
     "udp_mean_loss_percent",
@@ -92,10 +94,12 @@ def _metrics(
         "label": document["label"],
         "latency_median_ms": latency["median"],
         "latency_p95_ms": latency["p95"],
+        "latency_loss_percent": document["latency"].get("lost_percent", ""),
         "latency_overhead_percent": 0.0,
         "tcp_mean_mbps": _mean_metric(tcp_runs, "bits_per_second", 1_000_000),
         "tcp_change_percent": "",
         "udp_mean_mbps": _mean_metric(udp_runs, "bits_per_second", 1_000_000),
+        "udp_effective_mean_mbps": _mean_udp_effective_mbps(udp_runs),
         "udp_change_percent": "",
         "udp_mean_jitter_ms": _mean_metric(udp_runs, "jitter_ms"),
         "udp_mean_loss_percent": _mean_metric(udp_runs, "lost_percent"),
@@ -119,6 +123,17 @@ def _metrics(
 
 def _mean_metric(runs, field: str, divisor: float = 1.0):
     values = [float(run[field]) / divisor for run in runs if field in run]
+    return statistics.fmean(values) if values else ""
+
+
+def _mean_udp_effective_mbps(runs):
+    values = [
+        float(run["bits_per_second"])
+        / 1_000_000
+        * (1 - float(run.get("lost_percent", 0.0)) / 100)
+        for run in runs
+        if "bits_per_second" in run
+    ]
     return statistics.fmean(values) if values else ""
 
 

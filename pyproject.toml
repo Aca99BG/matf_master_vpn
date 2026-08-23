@@ -19,6 +19,10 @@ dev = [
 gui = [
 	"PyQt5>=5.15",
 ]
+analysis = [
+	"scipy>=1.10,<1.11",
+	"matplotlib>=3.7,<3.8",
+]
 
 [project.scripts]
 matf-vpn = "matf_vpn.cli:main"
@@ -30,6 +34,7 @@ matf-vpn-report = "matf_vpn.benchmark_report:main"
 matf-vpn-experiment = "matf_vpn.experiment_cli:main"
 matf-vpn-resource-monitor = "matf_vpn.resource_monitor:main"
 matf-vpn-resource-report = "matf_vpn.resource_report:main"
+matf-vpn-final-analysis = "matf_vpn.final_analysis:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

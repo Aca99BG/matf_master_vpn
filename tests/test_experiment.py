@@ -102,6 +102,9 @@ class MergeBenchmarkBlocksTest(unittest.TestCase):
 
             self.assertEqual(merged["parameters"]["repetitions"], 2)
             self.assertEqual(merged["latency"]["summary"]["mean"], 15.0)
+            self.assertEqual(merged["latency"]["expected_samples"], 2)
+            self.assertEqual(merged["latency"]["received_samples"], 2)
+            self.assertEqual(merged["latency"]["lost_percent"], 0.0)
             self.assertEqual(merged["tcp"]["throughput_summary_bps"]["mean"], 150.0)
             self.assertEqual(merged["tcp"]["raw_runs"][1]["block"], 2)
 
