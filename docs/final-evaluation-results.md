@@ -7,7 +7,7 @@
 | Datum | 23. avgust 2026. |
 | Klijent | Lokalni fizicki Linux racunar |
 | Server | Azure `Standard_B2s`, West Europe, Ubuntu 24.04 LTS |
-| Server public/private IP | `AZURE_PUBLIC_IP` / `AZURE_PRIVATE_IP` |
+| Server endpoint | Azure West Europe public/private endpoint (anonymized) |
 | Client kernel | `5.15.0-139-generic` |
 | Server kernel | `6.17.0-1022-azure` |
 | Client/server Python | 3.8.10 / 3.12.3 |
