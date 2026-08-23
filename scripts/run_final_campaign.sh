@@ -50,7 +50,7 @@ for command in python3 ping iperf3 ssh scp; do
 		exit 1
 	}
 done
-ssh -i "$SSH_KEY" "$SSH_HOST" \
+ssh -n -i "$SSH_KEY" "$SSH_HOST" \
 	"cd '$REMOTE_REPO' && .venv/bin/python -m matf_vpn.resource_monitor --help >/dev/null"
 
 printf '%s\n' 'Preflight and unrecorded warm-up'
@@ -64,9 +64,9 @@ done
 stop_remote_monitor() {
 	local stop_file=$1
 	local remote_output=$2
-	ssh -i "$SSH_KEY" "$SSH_HOST" "touch '$stop_file'"
+	ssh -n -i "$SSH_KEY" "$SSH_HOST" "touch '$stop_file'"
 	for attempt in {1..60}; do
-		if ssh -i "$SSH_KEY" "$SSH_HOST" "test -s '$remote_output'"; then
+		if ssh -n -i "$SSH_KEY" "$SSH_HOST" "test -s '$remote_output'"; then
 			return
 		fi
 		sleep 0.5
@@ -75,7 +75,17 @@ stop_remote_monitor() {
 	return 1
 }
 
-while IFS=$'\t' read -r sequence round_number mode repetitions; do
+mapfile -t schedule_rows < <(
+	python3 - "$SCHEDULE" <<'PY'
+import json
+import sys
+for block in json.load(open(sys.argv[1]))["blocks"]:
+    print(block["sequence"], block["round"], block["mode"], block["repetitions"], sep="\t")
+PY
+)
+
+for schedule_row in "${schedule_rows[@]}"; do
+	IFS=$'\t' read -r sequence round_number mode repetitions <<<"$schedule_row"
 	block_id=$(printf '%02d-%s' "$sequence" "$mode")
 	benchmark_output="$OUTPUT_DIR/blocks/$block_id.json"
 	resource_output="$OUTPUT_DIR/resources/$block_id.json"
@@ -89,7 +99,7 @@ while IFS=$'\t' read -r sequence round_number mode repetitions; do
 	printf '[%s] round %s, %s repetitions, target %s\n' \
 		"$block_id" "$round_number" "$repetitions" "$target"
 
-	ssh -i "$SSH_KEY" "$SSH_HOST" \
+	ssh -n -i "$SSH_KEY" "$SSH_HOST" \
 		"rm -f '$remote_output' '$remote_stop'; cd '$REMOTE_REPO'; nohup .venv/bin/python -m matf_vpn.resource_monitor --label '$block_id' --output '$remote_output' --stop-file '$remote_stop' --interval 1 >'/tmp/matf-resource-$block_id.log' 2>&1 &"
 	sleep 1
 	if ! PYTHONPATH="$ROOT_DIR/src" python3 -m matf_vpn.benchmark_cli \
@@ -106,23 +116,25 @@ while IFS=$'\t' read -r sequence round_number mode repetitions; do
 		exit 1
 	fi
 	stop_remote_monitor "$remote_stop" "$remote_output"
-	scp -q -i "$SSH_KEY" "$SSH_HOST:$remote_output" "$resource_output"
-done < <(
-	python3 - "$SCHEDULE" <<'PY'
-import json
-import sys
-for block in json.load(open(sys.argv[1]))["blocks"]:
-    print(block["sequence"], block["round"], block["mode"], block["repetitions"], sep="\t")
-PY
-)
+	scp -q -i "$SSH_KEY" "$SSH_HOST:$remote_output" "$resource_output" </dev/null
+done
 
 for mode in direct plaintext python wireguard openvpn; do
 	benchmark_args=()
 	resource_args=()
-	for path in "$OUTPUT_DIR"/blocks/*-"$mode".json; do
+	mapfile -t benchmark_paths < <(find "$OUTPUT_DIR/blocks" -maxdepth 1 \
+		-type f -name "*-$mode.json" | sort)
+	mapfile -t resource_paths < <(find "$OUTPUT_DIR/resources" -maxdepth 1 \
+		-type f -name "*-$mode.json" | sort)
+	if (( ${#benchmark_paths[@]} != ROUNDS || ${#resource_paths[@]} != ROUNDS )); then
+		printf 'Cannot merge %s: expected %d benchmark/resource blocks, found %d/%d\n' \
+			"$mode" "$ROUNDS" "${#benchmark_paths[@]}" "${#resource_paths[@]}" >&2
+		exit 1
+	fi
+	for path in "${benchmark_paths[@]}"; do
 		benchmark_args+=(--input "$path")
 	done
-	for path in "$OUTPUT_DIR"/resources/*-"$mode".json; do
+	for path in "${resource_paths[@]}"; do
 		resource_args+=(--input "$path")
 	done
 	PYTHONPATH="$ROOT_DIR/src" python3 -m matf_vpn.experiment_cli merge \
