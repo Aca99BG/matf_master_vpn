@@ -17,6 +17,9 @@ Specialized documents:
 
 - [Azure deployment](docs/azure-deployment.md)
 - [Benchmark methodology](docs/benchmarking.md)
+- [Final evaluation protocol](docs/final-evaluation.md)
+- [Final report template](docs/final-report-template.md)
+- [Mentor email draft](docs/mentor-email-draft.md)
 - [Security analysis](docs/security-analysis.md)
 - [Preliminary results](docs/preliminary-results.md)
 

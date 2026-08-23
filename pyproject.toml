@@ -27,6 +27,9 @@ matf-vpn-gui = "matf_vpn.gui:main"
 matf-vpn-server = "matf_vpn.multi_server_cli:main"
 matf-vpn-benchmark = "matf_vpn.benchmark_cli:main"
 matf-vpn-report = "matf_vpn.benchmark_report:main"
+matf-vpn-experiment = "matf_vpn.experiment_cli:main"
+matf-vpn-resource-monitor = "matf_vpn.resource_monitor:main"
+matf-vpn-resource-report = "matf_vpn.resource_report:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

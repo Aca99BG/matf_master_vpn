@@ -19,6 +19,10 @@ REPORT_FIELDS = [
     "udp_change_percent",
     "udp_mean_jitter_ms",
     "udp_mean_loss_percent",
+    "server_cpu_mean_percent",
+    "server_cpu_p95_percent",
+    "server_memory_mean_mib",
+    "server_memory_p95_mib",
 ]
 
 
@@ -26,15 +30,22 @@ def main(arguments: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", type=Path, required=True)
     parser.add_argument("--result", type=Path, action="append", default=[])
+    parser.add_argument(
+        "--resource",
+        action="append",
+        default=[],
+        metavar="LABEL=PATH",
+    )
     parser.add_argument("--output", type=Path, required=True)
     options = parser.parse_args(arguments)
 
     baseline = _load(options.baseline)
     documents = [baseline] + [_load(path) for path in options.result]
-    baseline_metrics = _metrics(baseline)
+    resources = _load_resources(options.resource)
+    baseline_metrics = _metrics(baseline, resources.get(baseline["label"]))
     rows = []
     for document in documents:
-        metrics = _metrics(document)
+        metrics = _metrics(document, resources.get(document["label"]))
         metrics["latency_overhead_percent"] = _change(
             baseline_metrics["latency_median_ms"],
             metrics["latency_median_ms"],
@@ -70,11 +81,14 @@ def _load(path: Path) -> Dict[str, object]:
     return document
 
 
-def _metrics(document: Dict[str, object]) -> Dict[str, object]:
+def _metrics(
+    document: Dict[str, object],
+    resource: Optional[Dict[str, object]] = None,
+) -> Dict[str, object]:
     latency = document["latency"]["summary"]
     tcp_runs = document.get("tcp", {}).get("raw_runs", [])
     udp_runs = document.get("udp", {}).get("raw_runs", [])
-    return {
+    metrics = {
         "label": document["label"],
         "latency_median_ms": latency["median"],
         "latency_p95_ms": latency["p95"],
@@ -85,7 +99,22 @@ def _metrics(document: Dict[str, object]) -> Dict[str, object]:
         "udp_change_percent": "",
         "udp_mean_jitter_ms": _mean_metric(udp_runs, "jitter_ms"),
         "udp_mean_loss_percent": _mean_metric(udp_runs, "lost_percent"),
+        "server_cpu_mean_percent": "",
+        "server_cpu_p95_percent": "",
+        "server_memory_mean_mib": "",
+        "server_memory_p95_mib": "",
     }
+    if resource is not None:
+        summary = resource["summary"]
+        metrics.update(
+            {
+                "server_cpu_mean_percent": summary["system_cpu_percent"]["mean"],
+                "server_cpu_p95_percent": summary["system_cpu_percent"]["p95"],
+                "server_memory_mean_mib": summary["memory_used_mib"]["mean"],
+                "server_memory_p95_mib": summary["memory_used_mib"]["p95"],
+            }
+        )
+    return metrics
 
 
 def _mean_metric(runs, field: str, divisor: float = 1.0):
@@ -103,6 +132,22 @@ def _change_optional(baseline, value):
     if baseline == "" or value == "":
         return ""
     return _change(float(baseline), float(value))
+
+
+def _load_resources(entries: List[str]) -> Dict[str, Dict[str, object]]:
+    resources = {}
+    for entry in entries:
+        if "=" not in entry:
+            raise ValueError("resource must use LABEL=PATH format")
+        label, raw_path = entry.split("=", 1)
+        if label in resources:
+            raise ValueError(f"duplicate resource label: {label}")
+        try:
+            document = json.loads(Path(raw_path).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise ValueError(f"cannot load resource result {raw_path}: {error}") from error
+        resources[label] = document
+    return resources
 
 
 if __name__ == "__main__":
